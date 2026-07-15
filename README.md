@@ -144,9 +144,3 @@ In the private setting, colluding recoverers can link the user's handle to their
 ### Conclusion
 
 Timelock Account Recovery replaces trust with deterrence. In the standard case, where a public account address holds the funds, no guardian, no committee, no third party can take what the mechanism alone controls. A residual trust remains in the watch towers, who must actually veto when they should; but they cannot take, and the owner can always supplement or replace them. In the private case, where the address itself must be recovered, TAR separates the two powers that every prior model fused together. Trusted entities become helpers who can guide the user home but cannot seize the house. Custody belongs to a game where attackers are positioned to lose and where the defense extends beyond the owner alone.
-
-In the strongest version of the model, the question for an attacker is no longer whether a given account appears weak. It is whether anything they can observe means what it appears to mean.
-
----
-
-*Feedback: Ethereum Magicians.*
