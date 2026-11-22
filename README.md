@@ -6,7 +6,7 @@
 
 **TL;DR.** TAR is a trust-minimized recovery mechanism for ERC-4337 / ERC-7579 smart accounts. Instead of trusting guardians to hand an account back, it lets a game decide. Anyone can open a recovery claim, but only by staking collateral (`lockValue`) and surviving a public challenge window (`lockTime`). If the account's defenders veto in time, the claim fails and the stake stays in the account; if not, the new signer takes over. The wait costs a legitimate owner time; it costs an attacker the stake. Defense can be extended to watch towers, which can block a claim but never take the account, and whose presence is hidden: every account exposes the same on-chain structure, and vetoes are anonymous zero-knowledge proofs. Since attackers cannot tell which accounts are watched, even undefended accounts benefit from the doubt. The powers that recovery usually bundles come apart: whoever can block a recovery can never take the account, and taking it needs no one's permission, only surviving the game. First prototyped at ETHGlobal Lisbon 2026 as [Chateau](https://ethglobal.com/showcase/chateau-zybba), TAR has since matured into the v1 design presented here, along with the limits that remain open.
 
-### Introduction
+## Introduction
 
 Account recovery remains one of the core unsolved problems of self-custodial wallet design. Externally owned accounts handle it in the most rigid way possible: the user must preserve a seed phrase, and any failure in that process results in either irreversible loss or total compromise. Smart accounts, particularly under ERC-4337, make alternative recovery flows possible. But most existing approaches achieve this by reintroducing trust through another channel: guardians, social recovery committees, and related constructions improve usability by giving some degree of power to third parties.
 
@@ -14,7 +14,7 @@ If smart accounts are to compete with EOAs not only on user experience but also 
 
 A useful consequence is that the game asks nothing of the past. A recovery path that depends on an old key, an encrypted backup or a remembered value has only moved the secret. TAR requires none of them: a locked-out owner enters with a freshly generated credential, on the same terms as anyone else.
 
-### The Core Mechanism
+## The Core Mechanism
 
 The mechanism rests on two account-level parameters. `lockValue` is the amount of ETH that must be staked to open a recovery claim. `lockTime` is the period that must elapse before the claim can be finalized. A requester opens a claim against a target account, naming the replacement credential they want installed, and the `lockValue` is routed into the targeted account. During `lockTime`, the account's defenders, in the simplest case the legitimate owner, can reject the claim: it is terminated and the stake stays in the account. If the timelock expires without a valid rejection, the requester can finalize the claim: the committed credential is installed, and the requester now controls the account, including the stake they routed into it. Either way, no funds move at the end; the only thing a successful claim changes is who controls the account.
 
@@ -22,7 +22,7 @@ The mechanism rests on two account-level parameters. `lockValue` is the amount o
 
 The key property of this mechanism is that unauthorized recovery attempts become costly and exposed to loss. An attacker cannot try for free. They must lock capital, wait through a challenge window, and accept the possibility that the account's defenders will notice the attempt and keep the stake. The system is thus secured not by trust in third parties, but by a game-theoretic asymmetry between the requester and the account they target. Nothing in the game identifies the owner. Recovery stops being a right one exercises and becomes a claim anyone can make; what separates an owner from an attacker is only who the defenders choose to stop.
 
-#### Front-running and the commitment
+### Front-running and the commitment
 
 An immediate vulnerability must be addressed: front-running. If the legitimate owner submits a recovery in the public mempool, an attacker should not be able to observe it and hijack the claim. TAR therefore opens a claim in two steps. The requester first registers a commitment over a closed tuple:
 
@@ -38,7 +38,7 @@ A commitment becomes revealable only after a maturity delay, calibrated per depl
 
 ![Commit and reveal](images/02-commit-and-reveal.png)
 
-#### Pricing the commitment
+### Pricing the commitment
 
 Commit–reveal creates a new object: a public, dated commitment. If it costs nothing, it is a free option. An attacker could park commitments against many accounts and wait for a moment of owner weakness to reveal (camping). Making the commitment carry the stake up front fixes that, but a commitment escrowing exactly `lockValue` points at the accounts configured with that value, and tells observers which account is preparing a recovery.
 
@@ -48,7 +48,7 @@ The escrow carries a single deadline, `commitExpiry`, fixed at registration. A c
 
 A future iteration explores split commitments: a chain of small value-bearing notes, created at spaced intervals and spent together in a multi-input reveal. Spreading the signal over time would keep the target unreadable until it is too late to race, and make camping much harder to sustain (see Conclusion).
 
-#### Concurrent claims
+### Concurrent claims
 
 Since anyone can open a claim, several can be active on the same account at once: the owner's recovery, an attacker's, a retry by either. TAR does not serialize them behind a lock, since any lock is something an attacker could hold. Three rules keep a single-signer account coherent instead.
 
@@ -64,7 +64,7 @@ Several stakes in flight must each stay attached to their claim until it settles
 
 ![Claim lifecycle](images/03-claim-lifecycle.png)
 
-### Watch Towers: Defense Without Positive Power
+## Watch Towers: Defense Without Positive Power
 
 Taken alone, the timelock-plus-collateral model already provides a trust-minimized recovery path with meaningful abuse resistance. But its strength depends heavily on attacker uncertainty. If an attacker has reason to believe the owner is inactive, offline, hospitalized, or otherwise unlikely to react within the challenge window, the expected cost of attempting recovery drops significantly. This is the main weakness of a pure timelock design. In theory, unauthorized recovery is risky. In practice, informed attackers can reduce that risk by exploiting contextual information about the owner.
 
@@ -78,7 +78,7 @@ In v1, the owner's own veto runs through the same defensive set: the owner holds
 
 The direct utility of watch towers is obvious when the owner is temporarily unavailable. But their deeper value is strategic. If an attacker can determine exactly which accounts are protected by additional defensive actors and which are not, they can simply avoid the defended ones and target the rest. A visible defense strengthens the accounts that have it, but it does not meaningfully protect those that do not. What matters far more is making it difficult to tell which accounts are weak targets in the first place.
 
-### Indistinguishability and Anonymous Vetoes
+## Indistinguishability and Anonymous Vetoes
 
 The watch tower mechanism becomes significantly stronger once the defensive set is not exposed publicly. Ideally, an attacker inspecting an account should not be able to determine whether additional defensive actors exist, how many there are, or who they are.
 
@@ -86,7 +86,7 @@ The privacy goal is therefore not merely to hide the identities of individual wa
 
 ![Indistinguishability](images/05-indistinguishability.png)
 
-#### A constant-shape defensive set
+### A constant-shape defensive set
 
 Indistinguishability starts with how the defense is stored. Every TAR account commits to its defensive set as a Merkle tree of the same fixed size: sixteen leaves, all of them always occupied, whether the account has zero, one or fifteen watch towers. Leaves not held by a real member are filled with decoys that look exactly like real ones. The contract stores the leaves, the root it recomputes from them, and one ciphertext per leaf (below). From the outside, every account's defense has the same shape: sixty-five storage words (sixteen leaves, the root and sixteen 96-byte ciphertexts), whatever the number of towers.
 
@@ -96,7 +96,7 @@ Every update rewrites the whole tree with fresh randoms and fresh encryptions. A
 
 ![The defensive set](images/06-the-defensive-set.png)
 
-#### The anonymous veto
+### The anonymous veto
 
 A watch tower does not identify itself when vetoing. It produces a zero-knowledge proof, from a small custom Noir circuit, showing that it knows the secret and the random behind one of the sixteen leaves, and that this leaf belongs to the account's current tree. The proof reveals nothing else: not which leaf, not whether the prover is the owner or a tower, not how many real members the set holds. The contract checks it against the root it stores for the account and against the specific claim being vetoed, so a proof made for one claim cannot be reused on another.
 
@@ -104,13 +104,13 @@ Because each proof is tied to a single claim and a vetoed claim is final, TAR ne
 
 ![The anonymous veto](images/07-the-anonymous-veto.png)
 
-#### Uncertainty as a security resource
+### Uncertainty as a security resource
 
 An interesting second-order effect may emerge naturally from the system's incentive structure. If failed recovery attempts transfer meaningful value to the targeted account, then some actors may find it rational to hunt attackers by polluting the off-chain signals an attacker relies on to identify vulnerable targets: social media accounts that appear abandoned, forum posts lamenting lost devices, staged inactivity patterns. The attacker is left with a single, uncomfortable fact: the only reliable way to test whether an account is truly vulnerable is to play the TAR game against it. The system does not need a large organized class of hunters; it only needs attackers to believe that some fraction of the signals they collect are deliberate traps.
 
 The security of the mechanism should therefore not be understood as resting on a single line of defense. The base layer comes from economic collateral and delayed finality: a malicious requester must lock capital and wait. The second layer comes from the legitimate owner's ability to reject the recovery during the challenge period. The third layer comes from hidden watch towers that may exist even when the owner is unavailable. Finally, the system may acquire a background layer of deterrence if the economic incentives lead some actors to operate believable trap accounts. Together, these layers damage the attacker's confidence in their own target classification model: uncertainty about owner liveness, hidden veto policies, and deceptive targets. That uncertainty is itself a security resource.
 
-### The Deterrence Model
+## The Deterrence Model
 
 Collateral and delay do not authenticate anyone, and they do not make unauthorized recovery impossible. They turn it into a bet. TAR's security therefore rests on three different kinds of claim: mechanical guarantees enforced by the contract (no finalization before the deadline, no substitution of the committed credential), a liveness assumption (at least one defender able and willing to act in time), and economic deterrence, which depends on uncertainty and on how the parameters are calibrated.
 
@@ -136,7 +136,7 @@ The protocol pays nothing for a veto: a fee per veto would make censorship profi
 
 ![Deterrence frontier](images/08-deterrence-frontier.png)
 
-### The Three Powers of Recovery
+## The Three Powers of Recovery
 
 To understand what TAR changes, and what it does not, it is useful to name the powers that every recovery mechanism grants. There are three.
 
@@ -148,7 +148,7 @@ When the account address is public, granting *see* to a recovery actor adds noth
 
 ![The three powers of recovery](images/09-the-three-powers.png)
 
-### TAR in a Private Setting
+## TAR in a Private Setting
 
 Everything described so far assumes the dominant case: a public account address that resolves directly to the funds. The situation changes when the address is deliberately hidden. A wallet that uses an ENS name as its public identity, stealth addresses for receiving, and privacy-preserving transfers has dissociated its public handle from its on-chain footprint. The 0x is not invisible, but it is not publicly linked to the user. Losing one's keys then means losing not just the ability to spend, but the knowledge of which account to recover. The 0x must be found before the game can begin, and finding it requires help.
 
@@ -176,7 +176,7 @@ The closest precursor is KELP (Reactive Key-Loss Protection, FC 2021), which alr
 
 The other ingredients are assembled, with credit to their sources: the claim, challenge window and capital at risk from optimistic rollups and bonded dispute systems; anonymous group membership from [Semaphore](https://semaphore.pse.dev/learn); cancellable delay from Argent and Zodiac. The contribution is their combination: recovery that (1) anyone can initiate, gated only by a stake rather than by authorization; (2) is defended by actors with strictly negative power, who can block but never take; and (3) whose defensive composition is indistinguishable on-chain, turning uncertainty about who is watching into a population-level security property.
 
-### Limitations
+## Limitations
 
 A security mechanism is judged by what it admits.
 
@@ -194,7 +194,7 @@ A malicious watch tower is a griefing vector. A watch tower's power is strictly 
 
 Privacy has residuals. The timing and frequency of set updates are public. The owner knows its whole set, decoys included. Gas payers, timing, transport metadata and operational mistakes can support inference, and veto anonymity rests on the broadcaster assumption. A custom circuit and verifier also add audit surface: soundness, zero knowledge and integration require independent review.
 
-### Conclusion
+## Conclusion
 
 Timelock Account Recovery replaces trust with deterrence. In the standard case, where a public account address holds the funds, no guardian, no committee, no third party can take what the game alone controls. A residual trust remains in the watch towers, who must actually veto when they should; but they cannot take, and an owner who still holds a credential can always supplement or replace them. Beyond v1, where the address itself must be recovered, the same separation lets trusted helpers guide the user home without being able to seize the house.
 
